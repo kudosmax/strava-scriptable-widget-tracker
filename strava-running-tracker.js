@@ -2,7 +2,7 @@
 // These must be at the very top of the file. Do not edit.
 // icon-color: deep-green; icon-glyph: running;
 
-const EVENT_NAME = "🏃‍♂️‍➡️";
+const EVENT_NAME = "Running Tracker";
 const GOAL_DAYS = 270;
 
 let clientID, clientSecret, refreshToken
