@@ -3,7 +3,7 @@
 // icon-color: deep-green; icon-glyph: running;
 
 const EVENT_NAME = "Running Tracker";
-const GOAL_DAYS = 270;
+const GOAL_DAYS = 365;
 
 let clientID, clientSecret, refreshToken
 let widgetInput = args.widgetParameter
@@ -25,13 +25,10 @@ const BG_OVERLAY_OPACITY = 0.6;
 const COLOR_FILLED = new Color("#4ade80");
 const COLOR_UNFILLED = new Color("#4ade80", 0.15);
 
-const PADDING = 8;
-const CIRCLE_SIZE = 6;
-const CIRCLE_SPACING = 4;
-const TEXT_SPACING = 8;
-const DOT_SHIFT_LEFT = 2;
-const YEAR_OFFSET = DOT_SHIFT_LEFT - 2;
-const DAYS_LEFT_OFFSET = 0;
+const PADDING = 4;
+const CIRCLE_SIZE = 5.5;
+const CIRCLE_SPACING = 3.5;
+const TEXT_SPACING = 6;
 
 const MENLO_REGULAR = new Font("Menlo", 12);
 const MENLO_BOLD = new Font("Menlo-Bold", 12);
@@ -69,10 +66,23 @@ async function loadFullStravaData(clientID, clientSecret, refreshToken) {
     }
 
     const since = Math.floor((Date.now() - GOAL_DAYS * 24 * 60 * 60 * 1000) / 1000);
-    const dataComplete = await new Request(callActivities + accessToken + `&after=${since}&per_page=200`).loadJSON()
+    
+    let allActivities = [];
+    let page = 1;
+    const perPage = 200;
+
+    while (true) {
+      const url = callActivities + accessToken + `&after=${since}&per_page=${perPage}&page=${page}`;
+      const activities = await new Request(url).loadJSON();
+      if (activities.length === 0) {
+        break;
+      }
+      allActivities = allActivities.concat(activities);
+      page++;
+    }
     
     const runData = {};
-    const runningActivities = dataComplete.filter(activity => activity.type === "Run");
+    const runningActivities = allActivities.filter(activity => activity.type === "Run");
     
     runningActivities.forEach(activity => {
       const date = getLocalDateString(new Date(activity.start_date));
@@ -122,25 +132,33 @@ overlay.colors = [
 ];
 widget.backgroundGradient = overlay;
 
+// Layout calc
 const WIDGET_WIDTH = 320;
 const AVAILABLE_WIDTH = WIDGET_WIDTH - 2 * PADDING;
 const TOTAL_CIRCLE_WIDTH = CIRCLE_SIZE + CIRCLE_SPACING;
 const COLUMNS = Math.floor(AVAILABLE_WIDTH / TOTAL_CIRCLE_WIDTH);
 const ROWS = Math.ceil(GOAL_DAYS / COLUMNS);
+const gridWidth = COLUMNS * TOTAL_CIRCLE_WIDTH - CIRCLE_SPACING;
 
-widget.setPadding(12, PADDING, 12, PADDING);
+widget.setPadding(10, PADDING, 10, PADDING);
 
+// Grid - 자동 중앙 정렬
 const gridContainer = widget.addStack();
 gridContainer.layoutVertically();
 
-const gridStack = gridContainer.addStack();
+const gridRow = gridContainer.addStack();
+gridRow.layoutHorizontally();
+gridRow.addSpacer(); // 자동 좌측 여백
+
+const gridStack = gridRow.addStack();
 gridStack.layoutVertically();
 gridStack.spacing = CIRCLE_SPACING;
+
+gridRow.addSpacer(); // 자동 우측 여백
 
 for (let row = 0; row < ROWS; row++) {
   const rowStack = gridStack.addStack();
   rowStack.layoutHorizontally();
-  rowStack.addSpacer(DOT_SHIFT_LEFT);
 
   for (let col = 0; col < COLUMNS; col++) {
     const dotIndex = row * COLUMNS + col;
@@ -159,28 +177,27 @@ for (let row = 0; row < ROWS; row++) {
 
 widget.addSpacer(TEXT_SPACING);
 
+// Footer - 자동 정렬
 const footer = widget.addStack();
 footer.layoutHorizontally();
+footer.addSpacer(); // 자동 좌측 여백
 
-const eventStack = footer.addStack();
-eventStack.addSpacer(YEAR_OFFSET);
-const eventText = eventStack.addText(EVENT_NAME);
+const footerContent = footer.addStack();
+footerContent.layoutHorizontally();
+footerContent.size = new Size(gridWidth, 0);
+
+const eventText = footerContent.addText(EVENT_NAME);
 eventText.font = MENLO_BOLD;
 eventText.textColor = COLOR_FILLED;
 
+footerContent.addSpacer();
+
 const daysText = `${daysCompleted}/${GOAL_DAYS} days`;
-
-const textWidth = daysText.length * 7.5;
-const availableSpace =
-  WIDGET_WIDTH - PADDING * 2 - YEAR_OFFSET - eventText.text.length * 7.5;
-const spacerLength = availableSpace - textWidth + DAYS_LEFT_OFFSET;
-
-footer.addSpacer(spacerLength);
-
-const daysTextStack = footer.addStack();
-const daysLeft = daysTextStack.addText(daysText);
+const daysLeft = footerContent.addText(daysText);
 daysLeft.font = MENLO_REGULAR;
 daysLeft.textColor = COLOR_UNFILLED;
+
+footer.addSpacer(); // 자동 우측 여백
 
 if (config.runsInWidget) {
   Script.setWidget(widget);
