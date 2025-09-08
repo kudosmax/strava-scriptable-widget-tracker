@@ -1,6 +1,6 @@
 # Strava 러닝 트래커 위젯
 
-
+<img title="" src="preview.png" width="400">
 
 365일간의 러닝 기록을 시각적으로 보여주는 [Scriptable](https://scriptable.app) 위젯입니다.
 뛴 날에는 초록색 점이 표시되어 러닝 습관을 한눈에 확인할 수 있습니다.
